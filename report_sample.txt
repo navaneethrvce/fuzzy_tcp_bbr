@@ -1,0 +1,62 @@
+Program Structure and Design
+
+Transmitting Segment -  Whenever there is data available to be sent, the code segmentizes the data into packets and then 
+adds the packets to the send_q. The packets in the send_q are copied into the sliding window when the size of the sliding
+window is lesser than the sender window size. There is a common send function called the transmit_segment. The transmit
+segment has a flag which can be used to indicate if a packet being sent out will require ACK's or not. The transmit_segment
+function will calculate the checksum set the appropriate sequence numbers , ack numbers and the length.
+
+
+Receiving Segment - As soon as a segment is received, these are the steps that happen
+
+1-  Checks for packet corruption
+
+2-  If the packet is a FIN and another FIN has not yet been received then send an ACK and change the staet to FIN recevied
+
+3 - If the packet is a ACK then, scan the sliding window to see what segments the ACK is acknowledging and remove them from the list
+
+4-  If the sequence number of the received data packet is lesser than the last ack no of the packet received then mark the packet
+as duplicate and never deliver the packet to the applciation
+
+
+Timer Invocation - With every timer invocation, the code iterates over all the TCP states and then for each TCP state it iterates 
+over the sliding window to see if the send packets timestamp has exceeded the RTT timeout. If it has, it retransmits the segment.
+if the number of retransmissions exceed 5 then the ctcp state is destroyed and the connection is dropped.
+
+Implementation Challenges
+
+The most difficult implementation challenge is that i was freeing memory wrongly. My design involved zero copy of the received and 
+transmitted segment. Due to various places of retransmissions i was freeing memory wrongly and was getting corrupted packets. I 
+overcame this challenge by debugging and using valgrind.
+
+Valgrind output
+
+==15130== HEAP SUMMARY:
+==15130==     in use at exit: 420 bytes in 6 blocks
+==15130==   total heap usage: 30 allocs, 24 frees, 5,702 bytes allocated
+==15130== 
+==15130== LEAK SUMMARY:
+==15130==    definitely lost: 0 bytes in 0 blocks
+==15130==    indirectly lost: 0 bytes in 0 blocks
+==15130==      possibly lost: 0 bytes in 0 blocks
+==15130==    still reachable: 420 bytes in 6 blocks
+==15130==         suppressed: 0 bytes in 0 blocks
+
+
+
+Testing 
+
+1- Tester-Student testcases
+2- Testing with data larger than the window size
+3- Testing with no data(just an Enter Press)
+4- Testing with only client running and no server 
+
+
+Remaining Bugs
+
+1) Source of corrupted packets occuring at random times. 
+
+2) When you run client and server and the server sends data first to the client. The packet received by the client is received as corrupted
+
+3) python tester-student.py testcases fail at times (usually checksum and corruption checks). Possibly due to an unadressed mem leak ?
+

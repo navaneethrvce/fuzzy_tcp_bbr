@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/ctcp.dir/ctcp.c.o CMakeFiles/ctcp.dir/ctcp_linked_list.c.o CMakeFiles/ctcp.dir/ctcp_sys_internal.c.o CMakeFiles/ctcp.dir/ctcp_utils.c.o CMakeFiles/ctcp.dir/test.c.o  -o ctcp 

@@ -1,0 +1,104 @@
+﻿BBR is implemented in the following files
+
+
+1) ctcp_bbr.c
+2) ctcp_bbr.h
+
+
+
+
+The ctcp_bbr.h contains the bbr state characteristics. The ctcp.c state structure has a pointer to this structure.
+
+
+Changes made to ctcp.c
+1) Pacing Gain Implemented - Packet's next send time is calculated by using the pacing gain variable in the packet send function.
+
+
+2) BBR onACk Integration - Everytime an ACK is recieved for a packet the BBR code is called where the change of BBR states are handled, B/W is updated, RTT is updated, pacing gain and congestion windows are changed
+
+
+State Changes
+
+
+1) STARTUP - When the flow is started the BBR is in STARTUP mode. In startup the pacing gain is 2.89  and also the congestion window keeps  expanding by 2.89. This keeps increasing until there are no consecutive 3 bandwidth increases of 25%. Once there are no 3 bandwidth increases of 25% the phase goes from STARTUP to DRAIN.
+
+
+
+
+2) DRAIN - When the flow is in DRAIN the packets are restricted only to 4 packets and the pacing gain becomes to 1/2.89 . After 4 packets have been sent and the acks received for them, it moves to PROBE_BW.
+
+
+3) Probe_BW - There are 4 phases to this stage. It moves through these phases in a cyclic manner. The condition to advance to the next phase is to check if the source has sent data equal to the BDP. The PROBE_BW enters the STARTUP phase if it sees the RTT prop decrease .
+The PROBE_BW enters the PROBE_RTT phase if the flow has been sending for the entire RTT_PROP period.  The pacing gain in PROBE_BW varies from 2.89,1/2.89 and 1. The congestion window how ever always remains constant
+
+
+4) PROBE_RTT - In the PROBE_RTT phase the flow is restricted to  4 packets and the pacing gain is made to 1 and the Cwnd is also set to 1. The RTT prop is updated with every RTT measurement in this phase
+
+
+
+
+Code ORganization -
+
+
+The ctcp_bbr.c contains  3 functions
+
+
+1) bbr_init() - This function initalizes the BBR state, it sets the initial congestion window parameters, initial RTT measurements . This is called from ctcp_init()
+
+
+2) update_bbr_rtt() - This function updates the RTT prop by taking the min RTT from the window and seeing if the RTT prop is lesser than that.
+
+
+3) Update_bbr_Bw() - This function calculates the BW and takes the Max bw from a window and updates the bottleneck bandwidth
+
+
+4) bbr_onack_recieved() - Handles state functions like setting pacing gain and window size. Also handles state transitions to some extent
+
+
+
+
+Testing- The testing was carried out by setting a usleep before each packet was sent.  The topology script failed on the VM on a Vmware environment. VM crash report when tried installing on Oracle Virtual box.
+Testing carried out with multiple clients and one server and with a 52 MB file
+
+
+Valgrind report
+
+
+==9971== LEAK SUMMARY:
+==9971==        definitely lost: 53,439 bytes in 216 blocks
+==9971==        indirectly lost: 0 bytes in 0 blocks
+==9971==          possibly lost: 0 bytes in 0 blocks
+==9971==        still reachable: 1,152 bytes in 9 blocks
+==9971==             suppressed: 0 bytes in 0 blocks
+==9971== Reachable blocks (those to which a pointer was found) are not shown.
+==9971== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==9971==
+==9971== For counts of detected and suppressed errors, rerun with: -v
+==9971== Use --track-origins=yes to see where uninitialised values come from
+==9971== ERROR SUMMARY: 86 errors from 16 contexts (suppressed: 28861 from 12)
+
+
+
+
+BDP vs Timestamp Graph
+
+
+The BDP vs Timestamp Graph from bdp.txt was plotted on excel. The graph has time on the x axis and the BDP on the Y axis
+
+
+
+
+  
+
+
+
+Remaining Bugs -
+
+
+1) Fix memory leaks
+
+
+2) Handle smoother state transitions
+
+
+3) Handle long flows
